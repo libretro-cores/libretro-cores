@@ -1,0 +1,15 @@
+{
+  "ppemu": {
+    "bundle_prefix": "com.ppemu.core",
+    "display_name": "PPEMU",
+    "min_ios_version": "15.0",
+    "feishu_webhook_secret": "FEISHU_WEBHOOK"
+  },
+  "zeta": {
+    "bundle_prefix": "com.zetaemu.core",
+    "display_name": "ZetaEMU",
+    "min_ios_version": "15.0",
+    "feishu_webhook_secret": "FEISHU_WEBHOOK_ZETA"
+  }
+}
+

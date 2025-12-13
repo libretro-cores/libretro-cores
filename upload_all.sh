@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 一键上传所有已构建的核心到 GitHub Release
-# 自动读取每个核心的 git 分支和远程仓库
+# 自动检测所有产物并上传
 # 使用方法: bash upload_all.sh
 
 set -e
@@ -21,149 +21,129 @@ echo ""
 
 cd "$CORES_DIR"
 
-# 核心列表（只需指定目录名和输出名）
-declare -a CORES=(
-  "mgba:mgba:Game Boy Advance"
-  "genesis:genesis:Sega Genesis/Mega Drive"
-  "nes:nes:Nintendo Entertainment System"
-  "snes:snes:Super Nintendo"
-  "ps1:ps1:PlayStation 1"
-  "nds:nds:Nintendo DS"
-  "saturn:saturn:Sega Saturn"
-  "arcade:arcade:Arcade (MAME 2003+)"
-  "n64:n64:Nintendo 64"
-)
-
 SUCCESS_COUNT=0
 FAIL_COUNT=0
 SKIP_COUNT=0
 
-for core_info in "${CORES[@]}"; do
-  IFS=':' read -r core_dir output_name description <<< "$core_info"
-  
-  ZIP_FILE="$core_dir/output/${output_name}-framework.zip"
-  
-  # 检查文件是否存在
-  if [ ! -f "$ZIP_FILE" ]; then
-    echo "⏭️  跳过 $output_name（未找到构建产物）"
-    ((SKIP_COUNT++))
-    continue
-  fi
-  
-  # 读取 git 信息
-  cd "$core_dir"
-  
-  if [ ! -d ".git" ]; then
-    echo "⏭️  跳过 $output_name（不是 git 仓库）"
-    ((SKIP_COUNT++))
-    cd ..
-    continue
-  fi
-  
-  BRANCH=$(git branch --show-current 2>/dev/null)
-  REMOTE_URL=$(git remote get-url origin 2>/dev/null)
-  
-  if [ -z "$BRANCH" ] || [ -z "$REMOTE_URL" ]; then
-    echo "⏭️  跳过 $output_name（无法读取 git 信息）"
-    ((SKIP_COUNT++))
-    cd ..
-    continue
-  fi
-  
-  # 从远程 URL 提取仓库信息
-  # 支持格式: git@github.com:owner/repo.git 或 https://github.com/owner/repo.git
-  if [[ "$REMOTE_URL" =~ git@github\.com:(.+)\.git ]]; then
-    REPO="${BASH_REMATCH[1]}"
-  elif [[ "$REMOTE_URL" =~ github\.com/(.+)\.git ]]; then
-    REPO="${BASH_REMATCH[1]}"
-  elif [[ "$REMOTE_URL" =~ github\.com/(.+)$ ]]; then
-    REPO="${BASH_REMATCH[1]}"
-  else
-    echo "⏭️  跳过 $output_name（无法解析远程 URL: $REMOTE_URL）"
-    ((SKIP_COUNT++))
-    cd ..
-    continue
-  fi
-  
-  # 读取 Bundle ID
-  BUNDLE_ID=$(grep -A 1 "CFBundleIdentifier" "output/${output_name}.framework/Info.plist" 2>/dev/null | grep -o "com\.ppemu\.core\.[^<]*" || echo "com.ppemu.core.${output_name}")
-  
-  cd ..
-  
-  SIZE=$(ls -lh "$ZIP_FILE" | awk '{print $5}')
+# 自动检测所有构建产物
+find . -path "*/output/*-framework.zip" -type f 2>/dev/null | sort | while read zip_file; do
+  core_dir=$(dirname $(dirname "$zip_file"))
+  core_name=$(basename "$core_dir")
+  variant=$(basename "$zip_file" | sed 's/-framework.zip//')
   
   echo ""
-  echo "━━━ 上传 $output_name ($description) ━━━"
-  echo "  文件: $ZIP_FILE"
-  echo "  大小: $SIZE"
-  echo "  仓库: $REPO"
-  echo "  分支: $BRANCH"
-  echo "  Bundle ID: $BUNDLE_ID"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "📦 处理: $core_name/$variant"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   
-  # 检查 release 是否已存在
-  if gh release view "$TAG" --repo "$REPO" &>/dev/null; then
-    echo "  📝 Release 已存在，上传文件..."
-    if gh release upload "$TAG" "$ZIP_FILE" --clobber --repo "$REPO" 2>&1 | grep -v "Uploading"; then
-      echo "  ✅ $output_name 上传成功！"
-      ((SUCCESS_COUNT++))
+  cd "$CORES_DIR/$core_name"
+  
+  # 检查是否是 git 仓库（.git 可能是文件或目录）
+  if [ ! -e .git ]; then
+    echo "⏭️  跳过（不是 git 仓库）"
+    continue
+  fi
+  
+  # 获取远程仓库信息
+  REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
+  if [ -z "$REMOTE_URL" ]; then
+    echo "⏭️  跳过（无远程仓库）"
+    continue
+  fi
+  
+  # 解析仓库 owner 和 name
+  if [[ "$REMOTE_URL" =~ github.com[:/]([^/]+)/([^/.]+) ]]; then
+    REPO_OWNER="${BASH_REMATCH[1]}"
+    REPO_NAME="${BASH_REMATCH[2]}"
+  else
+    echo "❌ 无法解析仓库信息: $REMOTE_URL"
+    continue
+  fi
+  
+  # 获取当前分支
+  BRANCH=$(git branch --show-current)
+  
+  # 读取 Bundle ID 和架构
+  PLIST_FILE="output/${variant}.framework/Info.plist"
+  if [ -f "$PLIST_FILE" ]; then
+    BUNDLE_ID=$(grep -A1 "CFBundleIdentifier" "$PLIST_FILE" | tail -1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+    MIN_IOS=$(grep -A1 "MinimumOSVersion" "$PLIST_FILE" | tail -1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+  else
+    BUNDLE_ID="com.ppemu.core.$variant"
+    MIN_IOS="15.0"
+  fi
+  
+  # 获取文件大小
+  SIZE=$(ls -lh "output/${variant}-framework.zip" | awk '{print $5}')
+  
+  echo ""
+  echo "  仓库: $REPO_OWNER/$REPO_NAME"
+  echo "  分支: $BRANCH"
+  echo "  变体: $variant"
+  echo "  大小: $SIZE"
+  echo "  Bundle ID: $BUNDLE_ID"
+  echo ""
+  
+  # 构建 Release 信息
+  RELEASE_TITLE="iOS Framework - $variant - $TAG"
+  RELEASE_BODY="## 📦 $variant Framework
+
+### 📊 构建信息
+- **核心**: $variant
+- **版本**: $TAG
+- **分支**: $BRANCH
+- **大小**: $SIZE
+- **架构**: arm64
+- **Bundle ID**: \`$BUNDLE_ID\`
+- **最低 iOS**: $MIN_IOS+
+
+### 📥 使用方法
+\`\`\`swift
+// 解压后将 ${variant}.framework 添加到 Xcode 项目
+// Embed & Sign 该 Framework
+\`\`\`
+
+---
+🤖 自动构建于 $(date '+%Y-%m-%d %H:%M:%S')
+"
+  
+  # 检查 Release 是否存在
+  echo "🔍 检查 Release: $TAG"
+  if gh release view "$TAG" --repo "$REPO_OWNER/$REPO_NAME" >/dev/null 2>&1; then
+    echo "✅ Release 已存在，追加上传..."
+    
+    # 删除旧资产（如果存在）
+    gh release delete-asset "$TAG" "${variant}-framework.zip" \
+      --repo "$REPO_OWNER/$REPO_NAME" --yes 2>/dev/null || true
+    
+    # 上传资产
+    if gh release upload "$TAG" "output/${variant}-framework.zip" \
+      --repo "$REPO_OWNER/$REPO_NAME" --clobber; then
+      echo "✅ 上传成功: ${variant}-framework.zip"
     else
-      echo "  ❌ $output_name 上传失败"
-      ((FAIL_COUNT++))
+      echo "❌ 上传失败"
+      exit 1
     fi
   else
-    echo "  📝 创建新 Release..."
+    echo "📝 创建新 Release..."
+    
     if gh release create "$TAG" \
-      "$ZIP_FILE" \
-      --title "$description iOS Framework ${VERSION}" \
-      --notes "## $description iOS Framework
-
-- **Bundle ID**: $BUNDLE_ID
-- **架构**: iOS arm64
-- **最低版本**: iOS 15.0
-- **构建时间**: ${VERSION}
-- **文件大小**: $SIZE
-- **分支**: $BRANCH
-
-🔧 本地构建并上传" \
-      --repo "$REPO" 2>&1 | grep -v "Uploading"; then
-      echo "  ✅ $output_name 上传成功！"
-      ((SUCCESS_COUNT++))
+      "output/${variant}-framework.zip" \
+      --repo "$REPO_OWNER/$REPO_NAME" \
+      --title "$RELEASE_TITLE" \
+      --notes "$RELEASE_BODY" \
+      --target "$BRANCH"; then
+      echo "✅ Release 创建成功"
     else
-      echo "  ❌ $output_name 上传失败"
-      ((FAIL_COUNT++))
+      echo "❌ Release 创建失败"
+      exit 1
     fi
   fi
+  
+  echo "✅ $core_name/$variant 完成！"
 done
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📊 上传完成统计"
+echo "🎉 上传完成！"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "  ✅ 成功: $SUCCESS_COUNT"
-echo "  ❌ 失败: $FAIL_COUNT"
-echo "  ⏭️  跳过: $SKIP_COUNT"
-echo ""
-
-if [ $FAIL_COUNT -eq 0 ] && [ $SUCCESS_COUNT -gt 0 ]; then
-  echo "🎉 所有核心上传成功！"
-  echo ""
-  echo "查看 Releases:"
-  for core_info in "${CORES[@]}"; do
-    IFS=':' read -r core_dir output_name _ <<< "$core_info"
-    if [ -f "$core_dir/output/${output_name}-framework.zip" ]; then
-      cd "$core_dir"
-      REMOTE_URL=$(git remote get-url origin 2>/dev/null)
-      if [[ "$REMOTE_URL" =~ git@github\.com:(.+)\.git ]] || [[ "$REMOTE_URL" =~ github\.com/(.+)\.git ]] || [[ "$REMOTE_URL" =~ github\.com/(.+)$ ]]; then
-        REPO="${BASH_REMATCH[1]}"
-        echo "  • https://github.com/$REPO/releases/tag/$TAG"
-      fi
-      cd ..
-    fi
-  done
-elif [ $SUCCESS_COUNT -eq 0 ] && [ $SKIP_COUNT -gt 0 ]; then
-  echo "ℹ️  没有需要上传的核心"
-else
-  echo "⚠️  部分核心上传失败，请检查错误信息"
-  exit 1
-fi
