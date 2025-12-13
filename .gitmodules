@@ -1,0 +1,33 @@
+[submodule "arcade"]
+	path = arcade
+	url = git@github.com:libretro-cores/fbneo.git
+[submodule "flycast"]
+	path = flycast
+	url = git@github.com:libretro-cores/flycast.git
+[submodule "genesis"]
+	path = genesis
+	url = git@github.com:libretro-cores/genesis-plus-gx.git
+[submodule "mgba"]
+	path = mgba
+	url = git@github.com:libretro-cores/mgba.git
+[submodule "n64"]
+	path = n64
+	url = git@github.com:libretro-cores/mupen64plus.git
+[submodule "nds"]
+	path = nds
+	url = git@github.com:libretro-cores/melonDS.git
+[submodule "nes"]
+	path = nes
+	url = git@github.com:libretro-cores/nestopia.git
+[submodule "ps1"]
+	path = ps1
+	url = git@github.com:libretro-cores/beetle-psx.git
+[submodule "psp"]
+	path = psp
+	url = git@github.com:libretro-cores/ppsspp.git
+[submodule "saturn"]
+	path = saturn
+	url = git@github.com:libretro-cores/beetle-saturn.git
+[submodule "snes"]
+	path = snes
+	url = git@github.com:libretro-cores/snes9x.git
