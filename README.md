@@ -69,3 +69,5 @@
 - 远程地址：`github.com:libretro-cores/{core-name}.git`
 
 
+
+
