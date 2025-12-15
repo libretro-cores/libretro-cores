@@ -25,15 +25,17 @@ SUCCESS_COUNT=0
 FAIL_COUNT=0
 SKIP_COUNT=0
 
-# 自动检测所有构建产物
-find . -path "*/output/*-framework.zip" -type f 2>/dev/null | sort | while read zip_file; do
-  core_dir=$(dirname $(dirname "$zip_file"))
+# 自动检测所有构建产物（包括 output, output-ppemu, output-zeta）
+find . \( -path "*/output/*-framework.zip" -o -path "*/output-ppemu/*-framework.zip" -o -path "*/output-zeta/*-framework.zip" \) -type f 2>/dev/null | sort | while read zip_file; do
+  output_dir=$(dirname "$zip_file")
+  core_dir=$(dirname "$output_dir")
   core_name=$(basename "$core_dir")
   variant=$(basename "$zip_file" | sed 's/-framework.zip//')
+  output_folder=$(basename "$output_dir")
   
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "📦 处理: $core_name/$variant"
+  echo "📦 处理: $core_name/$variant ($output_folder)"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   
   cd "$CORES_DIR/$core_name"
@@ -64,7 +66,7 @@ find . -path "*/output/*-framework.zip" -type f 2>/dev/null | sort | while read 
   BRANCH=$(git branch --show-current)
   
   # 读取 Bundle ID 和架构
-  PLIST_FILE="output/${variant}.framework/Info.plist"
+  PLIST_FILE="${output_folder}/${variant}.framework/Info.plist"
   if [ -f "$PLIST_FILE" ]; then
     BUNDLE_ID=$(grep -A1 "CFBundleIdentifier" "$PLIST_FILE" | tail -1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
     MIN_IOS=$(grep -A1 "MinimumOSVersion" "$PLIST_FILE" | tail -1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
@@ -74,7 +76,7 @@ find . -path "*/output/*-framework.zip" -type f 2>/dev/null | sort | while read 
   fi
   
   # 获取文件大小
-  SIZE=$(ls -lh "output/${variant}-framework.zip" | awk '{print $5}')
+  SIZE=$(ls -lh "${output_folder}/${variant}-framework.zip" | awk '{print $5}')
   
   echo ""
   echo "  仓库: $REPO_OWNER/$REPO_NAME"
@@ -117,7 +119,7 @@ find . -path "*/output/*-framework.zip" -type f 2>/dev/null | sort | while read 
       --repo "$REPO_OWNER/$REPO_NAME" --yes 2>/dev/null || true
     
     # 上传资产
-    if gh release upload "$TAG" "output/${variant}-framework.zip" \
+    if gh release upload "$TAG" "${output_folder}/${variant}-framework.zip" \
       --repo "$REPO_OWNER/$REPO_NAME" --clobber; then
       echo "✅ 上传成功: ${variant}-framework.zip"
     else
@@ -128,7 +130,7 @@ find . -path "*/output/*-framework.zip" -type f 2>/dev/null | sort | while read 
     echo "📝 创建新 Release..."
     
     if gh release create "$TAG" \
-      "output/${variant}-framework.zip" \
+      "${output_folder}/${variant}-framework.zip" \
       --repo "$REPO_OWNER/$REPO_NAME" \
       --title "$RELEASE_TITLE" \
       --notes "$RELEASE_BODY" \

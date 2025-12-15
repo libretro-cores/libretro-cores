@@ -1,6 +1,6 @@
 # Libretro 核心 iOS 构建项目
 
-## 📦 包含的核心（11个）
+## 📦 包含的核心（12个）
 
 ### 🎮 有多变体支持的核心（5个）
 
@@ -29,7 +29,7 @@
    - ⚠️ `nds-jit.framework` - JIT 版（iOS 不可用）
    - 文件：305 行
 
-### 📱 单版本核心（6个）
+### 📱 单版本核心（7个）
 
 6. **Genesis (Genesis Plus GX)** - `/genesis` - 363 行
 7. **Arcade (MAME 2003+)** - `/arcade` - 373 行
@@ -37,6 +37,7 @@
 9. **NES (Nestopia)** - `/nes` - 241 行
 10. **Saturn (Yabause)** - `/saturn` - 241 行
 11. **SNES (SNES9x)** - `/snes` - 241 行
+12. **PCE (Beetle PCE FAST)** - `/pce` - PC Engine/TurboGrafx-16 - 95 行
 
 ## 🔧 构建配置
 
@@ -67,6 +68,7 @@
 所有核心都在 `libretro-cores` organization 下：
 - `PPEMU` 分支包含最新的多变体构建配置
 - 远程地址：`github.com:libretro-cores/{core-name}.git`
+
 
 
 

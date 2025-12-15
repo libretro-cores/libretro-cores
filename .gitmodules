@@ -31,3 +31,6 @@
 [submodule "snes"]
 	path = snes
 	url = git@github.com:libretro-cores/snes9x.git
+[submodule "pce"]
+	path = pce
+	url = git@github.com:libretro-cores/Beetle-PCE-Fast.git
