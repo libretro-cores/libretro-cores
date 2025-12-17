@@ -34,3 +34,6 @@
 [submodule "pce"]
 	path = pce
 	url = git@github.com:libretro-cores/Beetle-PCE-Fast.git
+[submodule "yabasanshiro"]
+	path = yabasanshiro
+	url = git@github.com:libretro-cores/yabasanshiro.git
