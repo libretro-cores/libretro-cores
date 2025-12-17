@@ -37,3 +37,6 @@
 [submodule "yabasanshiro"]
 	path = yabasanshiro
 	url = git@github.com:libretro-cores/yabasanshiro.git
+[submodule "yabause"]
+	path = yabause
+	url = git@github.com:libretro-cores/yabause.git
