@@ -59,3 +59,11 @@ build/
 obj/
 bin/
 dist/
+
+# Dependencies and large archives
+MoltenVK/
+MoltenVK-all.tar
+ra_upstream/
+*.tar
+*.tar.gz
+*.zip
