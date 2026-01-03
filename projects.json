@@ -10,6 +10,11 @@
     "display_name": "ZetaEMU",
     "min_ios_version": "15.0",
     "feishu_webhook_secret": "FEISHU_WEBHOOK_ZETA"
+  },
+  "yohu": {
+    "bundle_prefix": "com.yohuapp.yohu.core",
+    "display_name": "Yohu",
+    "min_ios_version": "15.0"
   }
 }
 
